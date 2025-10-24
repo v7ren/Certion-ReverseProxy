@@ -1,0 +1,13 @@
+    @font-face {
+      font-family: 'Anurati';
+      src: url('../fonts/Anurati-Regular.otf') format('opentype');
+      font-weight: normal;
+      font-style: normal;
+    }
+    .symbols {
+      font-family: 'Anurati', sans-serif;
+      font-size: 3rem;
+      letter-spacing: 0.2em;
+      text-align: center;
+      margin-top: 40px;
+    }
