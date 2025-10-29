@@ -141,7 +141,71 @@ To use custom domains with your tunnels:
 1. Configure your DNS provider to point the domain to your server
 2. Update your server's NGINX/Apache configuration to handle the domain
 3. Add SSL certificates for your custom domain
+# Firewall Protection
 
+## Advanced Security for Your Exposed Services
+
+Certion includes a powerful firewall system that provides fine-grained control over who can access your exposed services and what they can do. This feature is essential for protecting development environments that might contain sensitive information or functionality.
+
+### Key Firewall Features
+
+- **Custom Rule Creation**: Define rules based on HTTP methods and URL paths
+- **Access Request System**: Review and approve temporary access to blocked resources
+- **Real-time Monitoring**: Track blocked requests and access attempts
+- **Temporary Access Grants**: Allow time-limited access for legitimate needs
+- **Import/Export**: Easily transfer firewall configurations between projects
+
+### How It Works
+
+1. **Define Rules**: Create rules to protect sensitive endpoints (e.g., block POST requests to `/admin/*`)
+2. **Automatic Blocking**: The firewall automatically blocks requests matching your rules
+3. **Access Requests**: When blocked, users can submit access requests with justification
+4. **Review Process**: Project owners can review, approve, or reject access requests
+5. **Temporary Access**: Approved requests grant time-limited access (configurable duration)
+
+### Firewall Dashboard
+
+The dedicated firewall dashboard provides:
+
+- Complete overview of all firewall rules
+- List of pending and approved access requests
+- Tools to quickly approve or reject access
+- Configuration options for default behavior
+- Statistics on blocked requests and access patterns
+
+### Example Use Cases
+
+- **Protect Admin Interfaces**: Block access to administrative endpoints
+- **Secure API Endpoints**: Control who can make API calls
+- **Prevent Data Modification**: Allow read access but block write operations
+- **Staging Environment Protection**: Share view access while preventing changes
+- **Demo Environment Security**: Allow specific features while blocking others
+
+### Implementation
+
+The firewall integrates seamlessly with Certion's tunneling system, evaluating each request before it reaches your local application. This ensures that unauthorized requests are blocked at the edge, never reaching your development environment.
+
+```
+┌─────────────┐       ┌───────────────────────────────┐       ┌─────────────┐
+│             │       │           Certion             │       │             │
+│   Internet  │ HTTPS │ ┌─────────┐      ┌─────────┐ │  WS   │  Certion    │
+│   Clients   ├──────►│ │Firewall ├─────►│ Tunnel  ├─┼──────►│  Agent      │
+│             │       │ └─────────┘      └─────────┘ │       │             │
+└─────────────┘       └───────────────────────────────┘       └─────────────┘
+```
+
+### Getting Started with Firewall Protection
+
+1. Navigate to your project in the Certion dashboard
+2. Click on the "Firewall" tab
+3. Add your first rule by specifying:
+   - HTTP method (GET, POST, PUT, DELETE, etc.)
+   - URL path pattern (exact match or wildcard patterns)
+   - Description (to remember the purpose of the rule)
+4. Save your configuration and test
+5. Monitor the "Access Requests" section for any blocked legitimate access
+
+The firewall system makes Certion suitable for a wide range of development scenarios, from personal projects to team collaborations, ensuring that your exposed services remain secure while still being accessible to authorized users.
 ### High Availability Setup
 
 For production use with high availability:
