@@ -244,6 +244,9 @@ class ProjectAgent:
         self.poll_interval = 5
         self.heartbeat_interval = 30
         self.last_heartbeat = 0
+        self.consecutive_errors = 0
+        self.max_consecutive_errors = 5
+        self.reconnect_delay = 10  # seconds
 
     def get_system_info(self):
         try:
@@ -274,12 +277,15 @@ class ProjectAgent:
             if response.status_code == 200:
                 self.last_heartbeat = time.time()
                 print(f"💓 Heartbeat sent at {datetime.now().strftime('%H:%M:%S')}")
+                self.consecutive_errors = 0  # Reset error counter on successful connection
                 return True
             else:
                 print(f"❌ Heartbeat failed: {response.status_code} - {response.text}")
+                self.consecutive_errors += 1
                 return False
         except requests.exceptions.RequestException as e:
             print(f"❌ Heartbeat error: {e}")
+            self.consecutive_errors += 1
             return False
 
     def poll_commands(self):
@@ -294,12 +300,15 @@ class ProjectAgent:
                 commands = data.get('commands', [])
                 if commands:
                     print(f"📬 Received {len(commands)} command(s)")
+                self.consecutive_errors = 0  # Reset error counter on successful connection
                 return commands
             else:
                 print(f"⚠️  Failed to poll commands: {response.status_code}")
+                self.consecutive_errors += 1
                 return []
         except requests.exceptions.RequestException as e:
             print(f"⚠️  Poll error: {e}")
+            self.consecutive_errors += 1
             return []
 
     def execute_command(self, command):
@@ -490,10 +499,13 @@ class ProjectAgent:
             )
             if response.status_code == 200:
                 print(f"📤 Completion reported to server")
+                self.consecutive_errors = 0  # Reset error counter on successful connection
             else:
                 print(f"⚠️  Failed to report completion: {response.status_code}")
+                self.consecutive_errors += 1
         except requests.exceptions.RequestException as e:
             print(f"⚠️  Error reporting completion: {e}")
+            self.consecutive_errors += 1
 
     def start_tunnel_thread(self, project_id, local_port):
         if project_id in self.tunnel_threads:
@@ -513,6 +525,9 @@ class ProjectAgent:
             return True
         return False
 
+    def should_restart(self):
+        return self.consecutive_errors >= self.max_consecutive_errors
+
     def run(self):
         print("=" * 70)
         print("🤖 PROJECT AGENT STARTING")
@@ -530,19 +545,61 @@ class ProjectAgent:
         
         try:
             while True:
-                if time.time() - self.last_heartbeat >= self.heartbeat_interval:
-                    self.send_heartbeat()
-                
-                commands = self.poll_commands()
-                for command in commands:
-                    self.execute_command(command)
-                
-                time.sleep(self.poll_interval)
+                try:
+                    if time.time() - self.last_heartbeat >= self.heartbeat_interval:
+                        self.send_heartbeat()
+                    
+                    commands = self.poll_commands()
+                    for command in commands:
+                        self.execute_command(command)
+                    
+                    # Check if we need to restart due to too many consecutive errors
+                    if self.should_restart():
+                        print(f"⚠️  Too many consecutive errors ({self.consecutive_errors}). Attempting to restart agent...")
+                        # Restart the agent by re-executing the script
+                        self._restart_agent()
+                        return  # Exit current process
+                    
+                    time.sleep(self.poll_interval)
+                except Exception as e:
+                    print(f"❌ Unexpected error in main loop: {e}")
+                    self.consecutive_errors += 1
+                    import traceback
+                    traceback.print_exc()
+                    time.sleep(self.poll_interval)
         except KeyboardInterrupt:
             print("\n🛑 Shutting down...")
             for project_id in list(self.running_processes.keys()):
                 self.stop_project(project_id)
             print("✅ Agent stopped")
+
+    def _restart_agent(self):
+        """Restart the agent by re-executing the current script with the same arguments"""
+        print("🔄 Restarting agent...")
+        
+        # Stop all running processes
+        for project_id in list(self.running_processes.keys()):
+            self.stop_project(project_id)
+        
+        # Get current script path and arguments
+        script = sys.executable
+        args = [sys.argv[0]]
+        for arg in sys.argv[1:]:
+            args.append(arg)
+        
+        print(f"🚀 Executing: {script} {' '.join(args)}")
+        
+        # Start a new process
+        if platform.system() == 'Windows':
+            # Use CREATE_NEW_PROCESS_GROUP to create a new process group
+            subprocess.Popen([script] + args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+        else:
+            # Use setsid to create a new process group
+            subprocess.Popen([script] + args, preexec_fn=os.setsid)
+        
+        print("✅ New agent process started. Exiting current process.")
+        # Exit current process
+        sys.exit(0)
 
 
 def main():
@@ -551,11 +608,17 @@ def main():
     parser.add_argument('--api-key', required=True, help='Agent API key')
     parser.add_argument('--poll-interval', type=int, default=5)
     parser.add_argument('--heartbeat-interval', type=int, default=30)
+    parser.add_argument('--max-consecutive-errors', type=int, default=5, 
+                        help='Maximum consecutive connection errors before restarting')
+    parser.add_argument('--reconnect-delay', type=int, default=10,
+                        help='Delay in seconds before attempting to reconnect')
     args = parser.parse_args()
 
     agent = ProjectAgent(args.server, args.api_key)
     agent.poll_interval = args.poll_interval
     agent.heartbeat_interval = args.heartbeat_interval
+    agent.max_consecutive_errors = args.max_consecutive_errors
+    agent.reconnect_delay = args.reconnect_delay
     agent.run()
 
 

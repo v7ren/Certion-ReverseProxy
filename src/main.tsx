@@ -22,6 +22,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/r/:username/:reponame/tree/*" element={<RepoView />} />
         <Route path="/r/:username/:reponame/settings" element={<RepoView />} />
         <Route path="/r/new" element={<RepositoryComponent />} />
+        {/* Add the new firewall manager route */}
       </Routes>
     </Router>
   </React.StrictMode>,

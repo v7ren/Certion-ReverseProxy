@@ -272,7 +272,7 @@ class Project(db.Model):
             'is_public': self.is_public,
             'subdomain': self.subdomain,
             'tunnel_port': self.tunnel_port,  # ✅ ADD THIS
-            'url': f"https://{self.subdomain}.v7ren.xyz" if self.subdomain else None,
+            'url': f"https://{self.subdomain}.YOURDOMAIN.com" if self.subdomain else None,
             'last_started': self.last_started.isoformat() if self.last_started else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None

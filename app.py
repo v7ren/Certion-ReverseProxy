@@ -14,17 +14,18 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_cors import CORS
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
-
+from firewall_api import firewall_bp
 # Import models and auth
 from models import Command, db, User, Agent, Project
 from auth import auth_bp
 from projects import projects_bp
+from security_middleware import disable_csp  # Import the new middleware
 
 # Proxy / tunnel modules
 from aiohttp import web
-import tunnels as tunnelv2  # Use the debug version
-from subdomainv2 import generate_subdomain, extract_subdomain
-
+import tunnels_with_firewall as tunnelv2  # Use the debug version
+from subdomain_handling import generate_subdomain, extract_subdomain
+from firewall_models import FirewallRule
 # WSGI adapter for Flask in aiohttp
 from aiohttp_wsgi import WSGIHandler
 
@@ -40,10 +41,10 @@ log = logging.getLogger(__name__)
 # =========================
 # Configuration
 # =========================
-DOMAIN = os.environ.get("DOMAIN", "DOMAIN.COM")
+DOMAIN = os.environ.get("DOMAIN", "YOURDOMAIN.com")
 PORT = int(os.environ.get("PORT", 3000))
 REQUEST_TIMEOUT = float(os.environ.get("REQUEST_TIMEOUT", "30"))
-FILES_DIRECTORY = os.path.join(os.path.dirname(__file__), 'client_files')
+FILES_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 # Database
 INSTANCE_FOLDER = os.path.join(os.path.dirname(__file__), 'instance')
 os.makedirs(INSTANCE_FOLDER, exist_ok=True)
@@ -60,7 +61,7 @@ SessionLocal = scoped_session(sessionmaker(bind=engine, expire_on_commit=False))
 # =========================
 app = Flask(__name__)
 app.config.update(
-    SECRET_KEY=os.environ.get('SECRET_KEY', 'asdkjflaskdjweuqpoposadjfpoa'),
+    SECRET_KEY=os.environ.get('SECRET_KEY', 'change-this-in-production'),
     SQLALCHEMY_DATABASE_URI=DATABASE_URL,
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     GALLERY_MAX_FILE_BYTES=5 * 1024 * 1024,
@@ -76,6 +77,9 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 db.init_app(app)
 CORS(app, supports_credentials=True)
 
+# Apply the CSP disabling middleware
+app = disable_csp(app)
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'auth.login_page'
@@ -88,6 +92,7 @@ def load_user(user_id):
 app.register_blueprint(auth_bp)
 app.register_blueprint(projects_bp)
 
+app.register_blueprint(firewall_bp)
 # =========================
 # Flask routes (React SPA + API)
 # =========================
@@ -715,6 +720,10 @@ async def tunnel_control_wrapper(request: web.Request):
     )
 
 async def http_handler_wrapper(request: web.Request):
+    """Wrapper for the HTTP handler to inject dependencies"""
+    from tunnels_with_firewall import http_handler  # Import the firewall-enabled version
+    from firewall_models import FirewallRule  # Import the FirewallRule model
+    
     async def status_handler(req):
         html = f"""
         <html><body>
@@ -725,12 +734,13 @@ async def http_handler_wrapper(request: web.Request):
         """
         return web.Response(text=html, content_type='text/html')
 
-    return await tunnelv2.http_handler(
-        request,
-        DOMAIN,
-        SessionLocal,
-        Project,
-        status_handler
+    return await http_handler(
+        request=request,
+        domain=DOMAIN,
+        db_session=db.session,
+        project_model=Project,
+        status_handler_func=status_handler,
+        firewall_rule_model=FirewallRule  # Pass the FirewallRule model to enable firewall checks
     )
 
 # =========================
@@ -773,7 +783,7 @@ async def unified_handler(request: web.Request):
         return await http_handler_wrapper(request)
     
     # Root domain or no subdomain - serve Flask app
-    log.debug(f"📱 Serving Flask app for: {host}{path}")
+    log.debug(f"Serving Flask app for: {host}{path}")
     
     # Create a new request with path_info for WSGI handler
     request.match_info['path_info'] = request.path
@@ -798,7 +808,7 @@ if __name__ == '__main__':
         log.info("✅ Database initialized")
 
     log.info("=" * 70)
-    log.info("🚀 STARTING UNIFIED SERVER")
+    log.info("  STARTING UNIFIED SERVER")
     log.info("=" * 70)
     log.info(f"   Port: {PORT}")
     log.info(f"   Domain: {DOMAIN}")

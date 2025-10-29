@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   FolderOpen, Plus, Play, Square, RotateCw, Trash2,
-  Edit, Eye, EyeOff, Terminal, Cpu, HardDrive, AlertCircle, Clock, X, Activity
+  Edit, Eye, EyeOff, Terminal, Cpu, HardDrive, AlertCircle, Clock, X, Activity, Shield, Globe
 } from 'lucide-react';
 import type { Agent, ToastType, Project, ProjectStatus } from './dashboard';
 
@@ -370,6 +370,16 @@ const ProjectsView = ({ showToast }: ProjectsViewProps) => {
     setSelectedProject(project);
     setShowPublicModal(true);
   };
+  const navigateToFirewall = (projectId: number) => {
+  // Store the selected project ID in localStorage for the firewall view to use
+    localStorage.setItem('selectedFirewallProjectId', projectId.toString());
+    
+    // Navigate to the firewall tab in the dashboard
+    const navEvent = new CustomEvent('navigate', {
+      detail: { tab: 'firewall' }
+    });
+    window.dispatchEvent(navEvent);
+  };
 
   const resetForm = () => {
     setFormData({
@@ -543,6 +553,19 @@ const ProjectsView = ({ showToast }: ProjectsViewProps) => {
                         }`}></span>
                       </div>
                     )}
+                    {project.subdomain && (
+                      <div className="flex items-center gap-2">
+                        <Globe className="w-4 h-4" />
+                        <a 
+                          href={`https://${project.subdomain}.v7ren.xyz`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          {project.subdomain}.v7ren.xyz
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -592,15 +615,16 @@ const ProjectsView = ({ showToast }: ProjectsViewProps) => {
                       <button
                         onClick={() => handleStartProject(project)}
                         className="col-span-2 flex items-center justify-center gap-2 px-4 py-3 bg-gray-900 text-white hover:bg-gray-800 font-light tracking-wider transition-colors border-none cursor-pointer"
-                        disabled={project.agent?.status !== 'online'}
                       >
                         <Play className="w-4 h-4" />
                         <span>START</span>
                       </button>
                     )}
+
+
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-5 gap-2">
                     <button
                       onClick={() => openStatusModal(project)}
                       className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-light text-sm tracking-wider transition-colors cursor-pointer"
@@ -619,6 +643,13 @@ const ProjectsView = ({ showToast }: ProjectsViewProps) => {
                     >
                       {project.is_public ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
+                    <button
+                        onClick={() => navigateToFirewall(project.id)}
+                        className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-light text-sm tracking-wider transition-colors cursor-pointer"
+                        title="Manage Firewall Rules"
+                      >
+                        <Shield className="w-4 h-4" />
+                      </button>
                     <button
                       onClick={() => openEditModal(project)}
                       className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-light text-sm tracking-wider transition-colors cursor-pointer"
@@ -731,7 +762,7 @@ const ProjectsView = ({ showToast }: ProjectsViewProps) => {
                     type="text"
                     value={formData.path}
                     onChange={(e) => setFormData({ ...formData, path: e.target.value })}
-                    className="w-full border border-gray-300 py-3 px-4 bg-white outline-none focus:border-gray-900 rounded-none transition-                    colors"
+                    className="w-full border border-gray-300 py-3 px-4 bg-white outline-none focus:border-gray-900 rounded-none transition-colors"
                     placeholder="/path/to/project"
                     required
                   />
@@ -1118,6 +1149,23 @@ const ProjectsView = ({ showToast }: ProjectsViewProps) => {
                         )}
                       </p>
                     </div>
+                    <div className="bg-white p-4">
+                      <p className="text-xs font-light text-gray-500 tracking-widest uppercase mb-1">Subdomain</p>
+                      <p className="font-light text-sm">
+                        {selectedProject.subdomain ? (
+                          <a 
+                            href={`https://${selectedProject.subdomain}.v7ren.xyz`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {selectedProject.subdomain}.v7ren.xyz
+                          </a>
+                        ) : (
+                          'Not set'
+                        )}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1150,6 +1198,31 @@ const ProjectsView = ({ showToast }: ProjectsViewProps) => {
                   </div>
                 </div>
               )}
+
+              {/* Firewall Section */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-sm font-light text-gray-500 tracking-widest uppercase">
+                    Firewall Protection
+                  </h4>
+                  <button
+                    onClick={() => {
+                      navigateToFirewall(selectedProject.id);
+                      setShowStatusModal(false);
+                      setSelectedProject(null);
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-light text-sm tracking-wider transition-colors"
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span>MANAGE FIREWALL</span>
+                  </button>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 p-4">
+                  <p className="text-sm text-blue-800 font-light">
+                    Configure firewall rules to protect your application from unauthorized access to sensitive endpoints.
+                  </p>
+                </div>
+              </div>
 
               {/* Agent Info */}
               {selectedProject.agent && (
@@ -1231,4 +1304,3 @@ const ProjectsView = ({ showToast }: ProjectsViewProps) => {
 };
 
 export default ProjectsView;
-

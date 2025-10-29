@@ -93,6 +93,7 @@ const Nav = ({
       category: 'Security',
       color: 'success',
       items: [
+        { id: 'firewall', icon: Shield, label: 'Firewall', badge: '3' },
         { id: 'certificates', icon: Award, label: 'Certificates', badge: '8' },
         { id: 'compliance', icon: Terminal, label: 'Compliance' },
         { id: 'analytics', icon: BarChart3, label: 'Analytics' },

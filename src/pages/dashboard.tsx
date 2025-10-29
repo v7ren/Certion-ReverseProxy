@@ -6,6 +6,7 @@ import DashboardOverview from './dashboard-overview';
 import ProjectsView from './projects';
 import AgentsView from './agents';
 import RepositoryComponent from './repo';
+import FirewallView from './firewall-view';
 
 // Types
 export type User = {
@@ -160,6 +161,21 @@ const CertionDashboard = () => {
     loadAgents();
   }, []);
 
+  // Add event listener for navigation events from other components
+  useEffect(() => {
+    const handleNavigation = (event: CustomEvent) => {
+      if (event.detail && event.detail.tab) {
+        setActiveTab(event.detail.tab);
+      }
+    };
+
+    window.addEventListener('navigate', handleNavigation as EventListener);
+    
+    return () => {
+      window.removeEventListener('navigate', handleNavigation as EventListener);
+    };
+  }, []);
+
   const handleLogout = async () => {
     try {
       await authService.logout();
@@ -284,8 +300,12 @@ const CertionDashboard = () => {
               <RepositoryComponent />
             )}
 
+            {activeTab === 'firewall' && (
+              <FirewallView showToast={showToast} />
+            )}
+
             {/* Other tabs placeholder */}
-            {!['dashboard', 'projects', 'agents', 'repositories'].includes(activeTab) && (
+            {!['dashboard', 'projects', 'agents', 'repositories', 'firewall'].includes(activeTab) && (
               <div className="border border-gray-200 bg-white p-16 text-center">
                 <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-2xl font-light mb-2">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h3>

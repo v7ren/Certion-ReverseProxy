@@ -762,7 +762,7 @@ def toggle_project_public(project_id):
                 'subdomain': project.subdomain,
                 'is_public': project.is_public,
                 'tunnel_port': project.tunnel_port,
-                'url': f"http://{project.subdomain}.DOMAIN.COM" if project.subdomain and project.is_public else None
+                'url': f"http://{project.subdomain}.YOURDOMAIN.com" if project.subdomain and project.is_public else None
             }
         }), 200
         
@@ -804,7 +804,7 @@ def make_project_public(project_id):
     
     return jsonify({
         'success': True,
-        'subdomain': f"{subdomain}.DOMAIN.COM",
+        'subdomain': f"{subdomain}.YOURDOMAIN.com",
         'tunnel_port': tunnel_port
     }), 200
 
@@ -851,7 +851,7 @@ def debug_project(project_id):
                 'seconds_since_heartbeat': seconds_since_heartbeat,
             }
         
-        from tunnels import active_tunnels
+        from tunnels_with_firewall import active_tunnels
         
         # Determine if project can be accessed
         has_agent = project.agent is not None
@@ -895,7 +895,7 @@ def debug_project(project_id):
 @login_required
 def debug_register_tunnel(project_id):
     """Debug: Manually register tunnel for testing"""
-    from tunnels import register_tunnel as reg_tunnel
+    from tunnels_with_firewall import register_tunnel as reg_tunnel
     
     try:
         project = Project.query.filter_by(
