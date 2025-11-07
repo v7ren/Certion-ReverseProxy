@@ -188,9 +188,9 @@ The firewall integrates seamlessly with Certion's tunneling system, evaluating e
 ```
 ┌─────────────┐       ┌───────────────────────────────┐       ┌─────────────┐
 │             │       │           Certion             │       │             │
-│   Internet  │ HTTPS │ ┌─────────┐      ┌─────────┐ │  WS   │  Certion    │
-│   Clients   ├──────►│ │Firewall ├─────►│ Tunnel  ├─┼──────►│  Agent      │
-│             │       │ └─────────┘      └─────────┘ │       │             │
+│   Internet  │ HTTPS │ ┌─────────┐      ┌─────────┐  │  WS   │  Certion    │
+│   Clients   ├──────►│ │Firewall ├─────►│ Tunnel  ├─ ┼──────►│  Agent      │
+│             │       │ └─────────┘      └─────────┘  │       │             │
 └─────────────┘       └───────────────────────────────┘       └─────────────┘
 ```
 
